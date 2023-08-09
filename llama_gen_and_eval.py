@@ -11,18 +11,21 @@ from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer
 def main(
     gsm8k_test_jsonl: str = "gsm8k_test.jsonl",
     model_path: str = "OFA-Sys/gsm8k-rft-llama7b-u13b",
+    is_bf16: bool = False,
     batch_size: int = 32,
-    save_dir: str = "./output_bf16_bs32",
+    save_dir: str | None = None,
 ):
-    print(f"main start, batch_size:{batch_size}")
+    print(f"main start, is_bf16:{is_bf16}, batch_size:{batch_size}")
     with open(gsm8k_test_jsonl, "r") as f:
         gsm8k_datas = [json.loads(line) for line in f]
 
-    model, tokenizer = get_model(model_path)
+    model, tokenizer = get_model(model_path, is_bf16=is_bf16)
     print("model loaded")
 
     batch_llama = get_batch_llama(model, tokenizer)
 
+    if save_dir is None:
+        save_dir = f"./output_{model.dtype}_bs{batch_size}"
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     gen_datas_jsonl = Path(save_dir) / "gen_datas.jsonl"
     start_index = (
@@ -116,7 +119,7 @@ def get_batch_llama(model: LlamaForCausalLM, tokenizer: LlamaTokenizer):
     return batch_llama
 
 
-def get_model(model_path: str):
+def get_model(model_path: str, is_bf16: bool = False):
     tokenizer = LlamaTokenizer.from_pretrained(model_path, padding_side="left")
     print(tokenizer.pad_token)
     print(tokenizer.bos_token)
@@ -125,10 +128,15 @@ def get_model(model_path: str):
     print(tokenizer.truncation_side)
     print(tokenizer.padding_side)
 
-    model = LlamaForCausalLM.from_pretrained(
-        model_path,
-        torch_dtype=torch.bfloat16,
-    ).cuda()
+    if is_bf16:
+        model = LlamaForCausalLM.from_pretrained(
+            model_path,
+            torch_dtype=torch.bfloat16,
+        ).cuda()
+    else:
+        model = LlamaForCausalLM.from_pretrained(
+            model_path,
+        ).cuda()
     model.eval()
     print(model.dtype)
 
