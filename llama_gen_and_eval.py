@@ -97,13 +97,14 @@ def gsm8k_batch_gen(
 def get_batch_llama(model: LlamaForCausalLM, tokenizer: LlamaTokenizer):
     @torch.inference_mode()
     def batch_llama(input_strs: list[str]) -> list[str]:
-        input_ids = tokenizer(
+        input_ids_w_attnmask = tokenizer(
             input_strs,
             padding=True,
             return_tensors="pt",
-        ).input_ids.to(model.device)
+        ).to(model.device)
         output_ids = model.generate(
-            inputs=input_ids,
+            input_ids=input_ids_w_attnmask.input_ids,
+            attention_mask=input_ids_w_attnmask.attention_mask,
             generation_config=GenerationConfig(
                 max_length=512,
                 do_sample=False,
@@ -111,7 +112,7 @@ def get_batch_llama(model: LlamaForCausalLM, tokenizer: LlamaTokenizer):
             ),
         ).tolist()
         real_output_ids = [
-            output_id[len(input_ids[i]) :] for i, output_id in enumerate(output_ids)
+            output_id[len(input_ids_w_attnmask.input_ids[i]) :] for i, output_id in enumerate(output_ids)
         ]
         output_strs = tokenizer.batch_decode(real_output_ids, skip_special_tokens=True)
         return output_strs
