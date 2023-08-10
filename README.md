@@ -34,11 +34,15 @@ You are using the legacy behaviour of the <class 'transformers.models.llama.toke
 0
 {'input_ids': [[0, 0, 0, 0, 0, 0, 2, 22172], [2, 22172, 3186, 29892, 526, 366, 3431, 29973]], 'attention_mask': [[0, 0, 0, 0, 0, 0, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1]]}
 ```
-很正常， attention mask 就算不传 generate 函数 https://github.com/huggingface/transformers/blob/d0c1aebea467af499331234e7b285a6bf91ea073/src/transformers/generation/utils.py#L1465 也会自动处理好，未能搞清究竟哪里出了差错。
+很正常， attention mask 就算不传 generate 函数 https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/generation/utils.py#L1324 也会自动处理好，未能搞清究竟哪里出了差错。
 
 ## 更新
 commit: [dd8e71](https://github.com/Haskely/gsm8k-rft-llama7b-u13b_evaluation/commit/dd8e714e52bb5b64b35f1895a738503ffc4ac64f) 手动将 attention_mask 传入，开了 batch_size=32 也能拿到 Accuracy=649/(649+670)=0.4920394238059136 的分数了：[output_torch.float32_bs32 ](./output_torch.float32_bs32)
 
-难道 https://github.com/huggingface/transformers/blob/d0c1aebea467af499331234e7b285a6bf91ea073/src/transformers/generation/utils.py#L1465 没生效？
+难道 https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/generation/utils.py#L1324 没生效？
+
+## 更新
+查明是因为使用了 GenerationConfig，导致 https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/generation/utils.py#L1264 没有加载模型的默认参数，进而 pad_token_id 和 eos_token_id 均为 None，进而 https://github.com/huggingface/transformers/blob/v4.31.0/src/transformers/generation/utils.py#L614 返回了全一 mask 导致的。
+解决方案，不用 GenerationConfig，或手动传入 attention mask
 
 相关 issue: https://github.com/OFA-Sys/gsm8k-ScRel/issues/8
