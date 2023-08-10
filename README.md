@@ -11,5 +11,8 @@ CUDA_VISIBLE_DEVICES=0 python llama_gen_and_eval.py
 - dtype=bf16, batch_size=64 约 10min 跑完 `Accuracy=376/(376+943)=0.2850644427596664`
 - dtype=bf16, batch_size=32 约 12min 跑完 `Accuracy=387/(387+932)=0.2934040940106141`
 - dtype=fp32, batch_size=32 约 20min 跑完 `Accuracy=405/(405+914)=0.3070507960576194`
+- dtype=fp32, batch_size=1  约 1.5h  跑完 `Accuracy=648/(648+671)=0.49128127369219105`
+
+看来原因是 tokenizer 的 `pad_token = "[PAD]"` 在推理时没有被真正的忽略，参与了上下文计算，干扰了模型输出。
 
 相关 issue: https://github.com/OFA-Sys/gsm8k-ScRel/issues/8
